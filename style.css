@@ -5,6 +5,7 @@ body {
   align-items: center;
   height: 100vh;
   margin: 0;
+  padding: 0;
   background: linear-gradient(125deg, black, lightgray, gray, black);
   background-size: 110% 150%;
 }
@@ -12,10 +13,6 @@ body {
 #buttonContainer {
   width: 500px;
   padding-left: 75px;
-  margin-top: 10px;
-}
-
-#tone {
   margin-top: 10px;
 }
 
@@ -33,7 +30,6 @@ select {
 .selects {
   display: flex;
   flex-direction: row;
-  margin-top:50px;
 }
 
 
