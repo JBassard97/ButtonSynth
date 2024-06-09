@@ -1,4 +1,5 @@
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let activeOscillators = {};
 
 function playChord(frequencies) {
   const selectEl = document.getElementById("tone");
@@ -6,37 +7,46 @@ function playChord(frequencies) {
   const noteLengthEl = document.getElementById("noteLength");
   const notelength = Number(noteLengthEl.value);
 
-  const oscillators = frequencies.map((frequency) => {
+  const gainNode = audioContext.createGain();
+  gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+  gainNode.connect(audioContext.destination);
+
+  frequencies.forEach((frequency) => {
     const oscillator = audioContext.createOscillator();
     oscillator.type = tone;
     oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-    return oscillator;
+    oscillator.connect(gainNode);
+    oscillator.start();
+    activeOscillators[frequency] = oscillator;
   });
 
-  const gainNode = audioContext.createGain();
-  gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-
-  oscillators.forEach((oscillator) => oscillator.connect(gainNode));
-  gainNode.connect(audioContext.destination);
-
-  oscillators.forEach((oscillator) => oscillator.start());
-
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.00001,
-    audioContext.currentTime + notelength
-  );
-  oscillators.forEach((oscillator) =>
-    oscillator.stop(audioContext.currentTime + 0.4)
-  );
+  setTimeout(() => {
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.00001,
+      audioContext.currentTime + notelength
+    );
+    frequencies.forEach((frequency) => {
+      const oscillator = activeOscillators[frequency];
+      if (oscillator) {
+        oscillator.stop(audioContext.currentTime + notelength);
+        delete activeOscillators[frequency];
+      }
+    });
+  }, notelength * 1000);
 }
 
-function playNote(frequency) {
-  playChord([frequency]); // Play a single note, treated as a chord with one note
+function stopChord(frequencies) {
+  frequencies.forEach((frequency) => {
+    const oscillator = activeOscillators[frequency];
+    if (oscillator) {
+      oscillator.stop();
+      delete activeOscillators[frequency];
+    }
+  });
 }
 
 function generateNoteNames() {
   const noteNames = [];
-  const baseNote = "A";
   const octaves = ["1", "2", "3", "4", "5", "6"];
 
   for (const octave of octaves) {
@@ -155,9 +165,18 @@ function createButtons() {
       button.style.backgroundColor = "black";
     }
 
-    button.addEventListener("click", () => {
-      const frequency = getFrequencyFromNoteName(noteName);
-      playNote(frequency);
+    const frequency = getFrequencyFromNoteName(noteName);
+
+    button.addEventListener("touchstart", (event) => {
+      event.preventDefault(); // Prevents the default context menu
+      if (!activeOscillators[frequency]) {
+        playChord([frequency]);
+      }
+    });
+
+    button.addEventListener("touchend", (event) => {
+      event.preventDefault(); // Prevents the default context menu
+      stopChord([frequency]);
     });
 
     buttonContainer.appendChild(button);
